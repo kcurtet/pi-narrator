@@ -40,6 +40,17 @@ test("narrationText vía modelo parsea ISO", async () => {
 	assert.deepEqual(r, { code: "es", text: "Terminé los tests." });
 });
 
+test("narrationText: la narración del modelo se sanitiza (sin markdown)", async () => {
+	const r = await narrationText(
+		cfg({ enabled: true }),
+		"req",
+		["bash: ls"],
+		"respuesta larga del agente ".repeat(10),
+		async () => "es\n- Hice los tests:\n- `lib.ts` con 12 pruebas\n\n**Listo.**",
+	);
+	assert.equal(r.text, "Hice los tests: lib.ts con 12 pruebas Listo.");
+});
+
 test("narrationText: fallo del modelo cae a respuesta recortada", async () => {
 	const r = await narrationText(
 		cfg({ enabled: true }),

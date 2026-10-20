@@ -52,7 +52,8 @@ export async function narrationText(
 	try {
 		const reply = await modelCall(brief(request, actions, answer));
 		const parsed = parseNarration(reply);
-		if (parsed.text) return parsed;
+		const sanitized = plain(parsed.text);
+		if (sanitized) return { code: parsed.code, text: sanitized };
 	} catch {
 		// sin narración: la respuesta misma, recortada
 	}
