@@ -83,6 +83,9 @@ export interface SpeakCommand {
 }
 
 /** Comando para decir `text` con el engine dado. piper necesita binario y rate. */
+/** Prefijo que serializa narraciones entre sesiones pi: un flock compartido (máx 30 s de espera). */
+const LINE: string[] = ["flock", "-w", "30", "/tmp/pi-narrator.line"];
+
 export function speakCommand(
 	engine: VoiceEngine,
 	text: string,
@@ -100,7 +103,7 @@ export function speakCommand(
 			"-c",
 			`piper-tts -m '${piperModel.file.replace(/'/g, "'\\''")}' --output-raw | (${play})`,
 		];
-		return { argv, stdin: text };
+		return { argv: [...LINE, ...argv], stdin: text };
 	}
 	if (engine === "spd-say") {
 		const rate = Math.round((speed - 1) * 100);
@@ -112,12 +115,12 @@ export function speakCommand(
 			"--",
 			text,
 		];
-		return { argv: ["spd-say", ...options] };
+		return { argv: [...LINE, "spd-say", ...options] };
 	}
 	if (engine === "espeak-ng" || engine === "espeak") {
 		const options = [...(lang ? ["-v", lang] : [])];
 		if (speed !== 1) options.push("-s", String(Math.round(175 * speed)));
-		return { argv: [engine, ...options, "--", text] };
+		return { argv: [...LINE, engine, ...options, "--", text] };
 	}
 	return null;
 }
