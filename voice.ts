@@ -3,8 +3,8 @@
  * y proceso de habla cancelable (kill del grupo entero del pipeline).
  */
 import { spawn } from "node:child_process";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { basename, join } from "node:path";
 
 export type VoiceEngine = "piper" | "spd-say" | "espeak-ng" | "espeak" | null;
 
@@ -55,14 +55,25 @@ export function piperVoices(
 		});
 }
 
-import { readdirSync } from "node:fs";
 function readdirSyncSafe(d: string): string[] {
 	return readdirSync(d);
 }
 
-/** Voz piper a usar: la preferida si existe, si no la primera del idioma, si no ninguna. */
+/** Si un comando existe en algún directorio del PATH. */
+export function commandExists(cmd: string): boolean {
+	const pathEnv = process.env.PATH ?? "";
+	for (const dir of pathEnv.split(":")) {
+		if (dir && existsSync(join(dir, cmd))) return true;
+	}
+	return false;
+}
+
+/** Voz piper a usar: la preferida (ruta o basename) si existe, si no la primera del idioma, si no ninguna. */
 export function pickVoice(voices: PiperVoice[], lang: string, preferred: string): string | undefined {
-	if (preferred && voices.some((v) => v.file === preferred)) return preferred;
+	if (preferred) {
+		const byName = voices.find((v) => v.file === preferred || basename(v.file) === preferred);
+		if (byName) return byName.file;
+	}
 	return voices.find((v) => v.lang === lang)?.file;
 }
 
@@ -83,10 +94,11 @@ export function speakCommand(
 	if (engine === "piper") {
 		if (!piperModel) return null;
 		// El texto entra por stdin (sin quoting); el pipeline entero muere con el grupo.
+	const play = `pw-play --raw --rate ${piperModel.rate} --format s16 --channels 1 - || paplay --raw --rate ${piperModel.rate} --format s16 --channels 1 -`;
 		const argv = [
 			"sh",
 			"-c",
-			`piper-tts -m '${piperModel.file.replace(/'/g, "'\\''")}' --output-raw | pw-play --raw --rate ${piperModel.rate} --format s16 --channels 1 -`,
+			`piper-tts -m '${piperModel.file.replace(/'/g, "'\\''")}' --output-raw | (${play})`,
 		];
 		return { argv, stdin: text };
 	}

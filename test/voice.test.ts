@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { detectEngines, piperVoices, pickVoice, speakCommand, Speaker } from "../voice.ts";
+import { commandExists, detectEngines, piperVoices, pickVoice, speakCommand, Speaker } from "../voice.ts";
 
 test("detectEngines prefiere piper-tts > piper > spd-say > espeak-ng > espeak > null", () => {
 	assert.equal(detectEngines((c) => c === "piper-tts"), "piper");
@@ -27,12 +27,13 @@ test("piperVoices parsea ficheros .onnx con su idioma", () => {
 	]);
 });
 
-test("pickVoice: preferida > idioma > undefined", () => {
+test("pickVoice: preferida (ruta o basename) > idioma > undefined", () => {
 	const voices = [
 		{ file: "/v/es_ES-a.onnx", lang: "es", rate: 22050 },
 		{ file: "/v/en_US-b.onnx", lang: "en", rate: 22050 },
 	];
 	assert.equal(pickVoice(voices, "es", "/v/es_ES-a.onnx"), "/v/es_ES-a.onnx");
+	assert.equal(pickVoice(voices, "en", "en_US-b.onnx"), "/v/en_US-b.onnx");
 	assert.equal(pickVoice(voices, "es", "no-existe"), "/v/es_ES-a.onnx");
 	assert.equal(pickVoice(voices, "fr", ""), undefined);
 });
@@ -45,6 +46,7 @@ test("speakCommand piper: piper-tts --output-raw piped a pw-play con rate", () =
 	assert.ok(cmd!.argv[2]!.includes("--output-raw"));
 	assert.ok(cmd!.argv[2]!.includes("--rate 22050"));
 	assert.ok(cmd!.argv[2]!.includes("pw-play"));
+	assert.ok(cmd!.argv[2]!.includes("paplay"), "fallback paplay presente");
 	assert.equal(cmd!.stdin, "hola");
 });
 
@@ -77,4 +79,9 @@ test("Speaker stop sin start y doble stop son no-ops", () => {
 	const s = new Speaker();
 	s.stop();
 	s.stop();
+});
+
+test("commandExists encuentra un binario del PATH (sh)", () => {
+	assert.equal(commandExists("sh"), true);
+	assert.equal(commandExists("no-existe-xyz-123"), false);
 });
