@@ -250,7 +250,7 @@ export default function narrator(pi: ExtensionAPI): void {
 		argumentHint: "[on | off | stop | voices | test | model | lang | voice | speed | short]",
 		getArgumentCompletions: (argumentPrefix: string) =>
 			narratorCompletions(argumentPrefix, state.config, state.voices.map((v) => v.file)),
-		handler: (args) => {
+		handler: (args, ctx) => {
 			const parts = args.trim().split(/\s+/);
 			const sub = (parts[0] ?? "").toLowerCase();
 			const value = parts.slice(1).join(" ");
@@ -258,19 +258,22 @@ export default function narrator(pi: ExtensionAPI): void {
 				const lines = state.voices.length
 					? state.voices.map((v) => `${v.lang}  ${path.basename(v.file)} (${v.rate} Hz)`)
 					: [`Voces piper en ${VOICES_DIR}: ninguna.`, `Engine: ${state.engine ?? "ninguno (instala piper-tts, spd-say o espeak-ng)"}`];
-				return Promise.resolve({ message: lines.join("\n") });
+				ctx.ui.notify(lines.join("\n"), "info");
+				return Promise.resolve();
 			}
 			if (sub === "test") {
 				const voice = value || state.config.voice;
 				speak(state, PREVIEW, "es", voice || undefined);
-				return Promise.resolve({ message: `Narrator: reproduciendo preview${voice ? ` con ${voice}` : ""}.` });
+				ctx.ui.notify(`Narrator: reproduciendo preview${voice ? ` con ${voice}` : ""}.`, "info");
+				return Promise.resolve();
 			}
 			const { config, reply } = applyCommand(state.config, sub, value);
 			state.config = config;
 			saveConfig(config);
 			if (sub === "stop") state.speaker.stop();
 			renderStatus(state);
-			return Promise.resolve({ message: reply });
+			ctx.ui.notify(reply, "info");
+			return Promise.resolve();
 		},
 	});
 }
