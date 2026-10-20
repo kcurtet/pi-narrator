@@ -10,3 +10,4 @@
 - Ruling: en print mode modelCall falla (ctx stale) → fallback a lectura recortada de la respuesta; en interactivo funciona normal. Aceptable.
 - Ruling: debugSpeak permanente tras PI_NARRATOR_DEBUG=1 (log /tmp/narrator-speak.log), útil para diagnóstico.
 - Pendiente humano: verificación interactiva (footer, /narrator on/off/test/voices, narración larga con glm-5.3-flash).
+- Task 4: complete (suite 29/29 + smoke ok)
