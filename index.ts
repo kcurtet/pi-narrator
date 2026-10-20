@@ -183,8 +183,8 @@ export default function narrator(pi: ExtensionAPI): void {
 		speakSeq: 0,
 	};
 
-	pi.on("session_start", (event) => {
-		state.ctx = event.context;
+	pi.on("session_start", (_event, ctx) => {
+		state.ctx = ctx;
 		discoverVoice(state);
 		renderStatus(state);
 	});
@@ -194,14 +194,16 @@ export default function narrator(pi: ExtensionAPI): void {
 	});
 
 	// Un prompt nuevo: la persona ya pasó de página, calla lo que quedaba.
-	pi.on("before_agent_start", (event) => {
+	pi.on("before_agent_start", (event, ctx) => {
+		state.ctx = ctx;
 		state.speaker.stop();
 		state.narrating = false;
 		state.request = event.messageType === "user" ? (event.prompt ?? "") : "";
 		state.actions = [];
 	});
 
-	pi.on("tool_result", (event) => {
+	pi.on("tool_result", (event, ctx) => {
+		state.ctx = ctx;
 		if (event.parentToolCallId !== undefined) return;
 		if (!state.config.enabled) return;
 		if (state.actions.length >= MAX_ACTIONS) return;
@@ -209,7 +211,8 @@ export default function narrator(pi: ExtensionAPI): void {
 		state.actions.push(line);
 	});
 
-	pi.on("agent_end", (event) => {
+	pi.on("agent_end", (event, ctx) => {
+		state.ctx = ctx;
 		if (process.env.PI_NARRATOR_DEBUG) debugSpeak("agent_end", `msgs=${event.messages?.length} answer="${answerOf(event).slice(0, 40)}" decision=${JSON.stringify(shouldNarrate(state.config, answerOf(event)))}`);
 		const decision = shouldNarrate(state.config, answerOf(event));
 		if (decision === false) return;
