@@ -184,6 +184,7 @@ export default function narrator(pi: ExtensionAPI): void {
 	};
 
 	pi.on("session_start", (_event, ctx) => {
+		appendFileSync("/tmp/narrator-speak.log", `${Date.now()} session_start ctx=${ctx ? "yes" : "NO"}\n`);
 		state.ctx = ctx;
 		discoverVoice(state);
 		renderStatus(state);
@@ -212,6 +213,7 @@ export default function narrator(pi: ExtensionAPI): void {
 	});
 
 	pi.on("agent_end", (event, ctx) => {
+		appendFileSync("/tmp/narrator-speak.log", `${Date.now()} agent_end ctx=${ctx ? "yes" : "NO"} selfCtx=${state.ctx ? "yes" : "NO"}\n`);
 		state.ctx = ctx;
 		if (process.env.PI_NARRATOR_DEBUG) debugSpeak("agent_end", `msgs=${event.messages?.length} answer="${answerOf(event).slice(0, 40)}" decision=${JSON.stringify(shouldNarrate(state.config, answerOf(event)))}`);
 		const decision = shouldNarrate(state.config, answerOf(event));
