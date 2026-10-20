@@ -1,0 +1,9 @@
+{
+  "name": "pi-narrator",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "pi extension: narrates out loud what the agent did after each turn (piper/spd-say/espeak)",
+  "scripts": {
+    "test": "node --test 'test/*.test.ts'"
+  }
+}
