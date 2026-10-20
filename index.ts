@@ -10,6 +10,7 @@ import path from "node:path";
 import {
 	applyCommand,
 	narrationText,
+	narratorCompletions,
 	VOICES_DIR,
 	shouldNarrate,
 } from "./extension.ts";
