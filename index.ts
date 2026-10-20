@@ -246,6 +246,9 @@ export default function narrator(pi: ExtensionAPI): void {
 
 	pi.registerCommand("narrator", {
 		description: "pi te cuenta en voz alta qué hizo tras cada turno",
+		argumentHint: "[on | off | stop | voices | test | model | lang | voice | speed | short]",
+		getArgumentCompletions: (argumentPrefix: string) =>
+			narratorCompletions(argumentPrefix, state.config, state.voices.map((v) => v.file)),
 		handler: (args) => {
 			const parts = args.trim().split(/\s+/);
 			const sub = (parts[0] ?? "").toLowerCase();

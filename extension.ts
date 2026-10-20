@@ -61,6 +61,53 @@ export async function narrationText(
 	return { code: guessLanguage(`${request}\n${answer}`), text: cut(plain(answer), 250) };
 }
 
+export interface CompletionItem {
+	value: string;
+	label: string;
+	description?: string;
+}
+
+const SUBCOMMANDS: CompletionItem[] = [
+	{ value: "on", label: "on", description: "activa el narrador" },
+	{ value: "off", label: "off", description: "desactiva el narrador" },
+	{ value: "stop", label: "stop", description: "corta la narración en curso" },
+	{ value: "voices", label: "voices", description: "lista voces piper instaladas" },
+	{ value: "test", label: "test [voz]", description: "preview de voz" },
+	{ value: "model", label: "model <id>", description: "modelo que escribe la narración" },
+	{ value: "lang", label: "lang <código>", description: "idioma hablado (vacío = automático)" },
+	{ value: "voice", label: "voice <nombre>", description: "voz piper preferida" },
+	{ value: "speed", label: "speed <0.5-3>", description: "velocidad de la voz" },
+	{ value: "short", label: "short <n>", description: "umbral lectura directa (chars)" },
+];
+
+const LANGS = ["es", "en", "pt", "fr", "de", "it", "ca", "gl", "eu"];
+
+/** Autocompletado de /narrator: subcomandos, voces, idiomas y valores actuales. */
+export function narratorCompletions(prefix: string, config: NarratorConfig, voiceFiles: string[]): CompletionItem[] {
+	const parts = prefix.split(/\s+/);
+	if (parts.length <= 1) {
+		const p = (parts[0] ?? "").toLowerCase();
+		return SUBCOMMANDS.filter((s) => s.value.startsWith(p));
+	}
+	const sub = parts[0]!.toLowerCase();
+	const argPrefix = parts.slice(1).join(" ").toLowerCase();
+	const byPrefix = (values: CompletionItem[]) => values.filter((v) => v.value.toLowerCase().startsWith(argPrefix));
+	if (sub === "voices" || sub === "test" || sub === "voice") {
+		const items = voiceFiles.map((f) => {
+			const name = f.split("/").pop()!.replace(/\.onnx$/, "");
+			return { value: name, label: name };
+		});
+		return byPrefix(items);
+	}
+	if (sub === "lang") return byPrefix(LANGS.map((l) => ({ value: l, label: l })));
+	if (sub === "on" || sub === "off" || sub === "stop") return [];
+	// valores actuales como sugerencia
+	return byPrefix([
+		{ value: config.model, label: config.model, description: "actual" },
+		{ value: String(config.speed), label: String(config.speed), description: "velocidad actual" },
+	]);
+}
+
 const ISO_LANG = /^[a-z]{2,3}$/;
 
 function isLangCode(value: string): boolean {
