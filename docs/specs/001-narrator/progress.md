@@ -3,3 +3,4 @@
 ## Pre-flight
 - Repo nuevo: main solo recibe docs; implementación en feat/narrator.
 - piper1-gpl: binario `piper-tts`; pw-play necesita --rate desde .onnx.json (verificado en vivo, 22050).
+- Task 1: complete (commit f324fe8, node --test 'test/*.test.ts' → 12/12)
