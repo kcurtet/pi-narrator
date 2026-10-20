@@ -11,3 +11,4 @@
 - Ruling: debugSpeak permanente tras PI_NARRATOR_DEBUG=1 (log /tmp/narrator-speak.log), útil para diagnóstico.
 - Pendiente humano: verificación interactiva (footer, /narrator on/off/test/voices, narración larga con glm-5.3-flash).
 - Task 4: complete (suite 29/29 + smoke ok)
+- Review pass: 5 findings Important/Critical corregidos, 30/30 + smoke speak ok
