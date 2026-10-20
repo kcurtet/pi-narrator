@@ -8,6 +8,8 @@ export interface NarratorConfig {
 	model: string;
 	language: string;
 	voice: string;
+	/** Diccionario de pronunciación: palabra inglesa/extranjera → cómo se dice. */
+	pronounce: Record<string, string>;
 }
 
 export const DEFAULT_CONFIG: NarratorConfig = {
@@ -15,6 +17,7 @@ export const DEFAULT_CONFIG: NarratorConfig = {
 	model: "zai-coding-cn/gpt-6.1-luna",
 	language: "",
 	voice: "",
+	pronounce: {},
 };
 
 /** Recorta a `max` caracteres sin cortar palabras si puede evitarlo. */
@@ -132,4 +135,17 @@ Rules:
 - No English words in a non-English narration: use the language's own word for technical terms ("the tests", "the commit") or write them the way a speaker of that language pronounces them ("comit", "güit").
 
 Reply in exactly this form: the first line holds only the ISO 639-1 code of the language you speak (es, en, pt, fr...), and the narration starts on the second line.`;
+}
+
+const escapeRe = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/** Sustituye palabras completas (case-insensitive) por su pronunciación. */
+export function applyPronunciation(text: string, dict: Record<string, string>): string {
+	let out = text;
+	for (const [word, say] of Object.entries(dict)) {
+		if (!word || !say) continue;
+		const re = new RegExp(`\\b${escapeRe(word)}\\b`, "gi");
+		out = out.replace(re, say);
+	}
+	return out;
 }

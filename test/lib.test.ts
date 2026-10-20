@@ -7,6 +7,7 @@ import {
 	describeTool,
 	guessLanguage,
 	isShortAnswer,
+	applyPronunciation,
 	narratorPrompt,
 	parseNarration,
 	plain,
@@ -91,11 +92,20 @@ test("isShortAnswer: texto plano <=200 y no vacío", () => {
 	assert.equal(isShortAnswer(`# T\n\n${"a".repeat(150)}`), true);
 });
 
+test("applyPronunciation sustituye palabras completas case-insensitive", () => {
+	const dict = { commit: "comit", cache: "caché", "CI": "si-ai" };
+	assert.equal(applyPronunciation("Hice un commit del cache en la CI", dict), "Hice un comit del caché en la si-ai");
+	assert.equal(applyPronunciation("commits y commits", dict), "commits y commits", "no es subcadena");
+	assert.equal(applyPronunciation("texto sin claves", dict), "texto sin claves");
+	assert.equal(applyPronunciation("texto", {}), "texto");
+});
+
 test("DEFAULT_CONFIG apagado con modelo de ejemplo", () => {
 	assert.deepEqual(DEFAULT_CONFIG, {
 		enabled: false,
 		model: "zai-coding-cn/gpt-6.1-luna",
 		language: "",
 		voice: "",
+		pronounce: {},
 	});
 });
