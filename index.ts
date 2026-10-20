@@ -13,8 +13,8 @@ import {
 	VOICES_DIR,
 	shouldNarrate,
 } from "./extension.ts";
-import { DEFAULT_CONFIG, brief, cut, narratorPrompt, describeTool, type NarratorConfig } from "./lib.ts";
-import { detectEngines, piperVoices, pickVoice, speakCommand, Speaker, type VoiceEngine } from "./voice.ts";
+import { DEFAULT_CONFIG, cut, narratorPrompt, describeTool, type NarratorConfig } from "./lib.ts";
+import { commandExists, detectEngines, piperVoices, pickVoice, speakCommand, Speaker, type VoiceEngine } from "./voice.ts";
 
 const STATUS_KEY = "narrator";
 const MAX_ACTIONS = 40;
@@ -33,6 +33,7 @@ interface State {
 	voices: ReturnType<typeof piperVoices>;
 	narrating: boolean;
 	warnedNoVoice: boolean;
+	speakSeq: number;
 }
 
 function configPath(): string {
@@ -97,40 +98,58 @@ function debugSpeak(tag: string, info: string): void {
 	if (process.env.PI_NARRATOR_DEBUG) appendFileSync("/tmp/narrator-speak.log", `${Date.now()} ${tag} ${info}\n`);
 }
 
-function speak(state: State, text: string, lang: string): void {
+function speak(state: State, text: string, lang: string, voiceOverride?: string): void {
 	if (!text) return;
 	debugSpeak("speak", `engine=${state.engine ?? "none"} lang=${lang || "-"} ${text.slice(0, 60)}`);
-	const picked = state.engine === "piper" ? (pickVoice(state.voices, lang, state.config.voice) ?? state.voices[0]?.file) : undefined;
+	const wanted = voiceOverride || state.config.voice;
+	const picked = state.engine === "piper" ? (pickVoice(state.voices, lang, wanted) ?? state.voices[0]?.file) : undefined;
 	const model = picked ? state.voices.find((v) => v.file === picked) : undefined;
-	const cmd = speakCommand(state.engine, text, lang, state.config.voice, model, SPEED);
+	const cmd = speakCommand(state.engine, text, lang, wanted, model, SPEED);
 	if (!cmd) {
-		if (state.ctx && !state.warnedNoVoice) {
-			state.warnedNoVoice = true;
-			state.ctx.ui.setStatus(STATUS_KEY, "narrator: sin voz (instala piper-tts, spd-say o espeak-ng)");
-			setTimeout(() => renderStatus(state), 4_000);
+		// piper sin voces instaladas: degrada al siguiente engine disponible
+		if (state.engine === "piper" && state.voices.length === 0) {
+			const fallback = detectEngines((c) => c !== "piper-tts" && c !== "piper" && commandExists(c));
+			if (fallback) {
+				const fcmd = speakCommand(fallback, text, lang, "", undefined, SPEED);
+			if (fcmd) { startSpeaking(state, fcmd); return; }
+			}
 		}
+		try {
+			if (state.ctx && !state.warnedNoVoice) {
+				state.warnedNoVoice = true;
+				state.ctx.ui.setStatus(STATUS_KEY, "narrator: sin voz (instala piper-tts, spd-say o espeak-ng)");
+				setTimeout(() => renderStatus(state), 4_000);
+			}
+		} catch { /* stale ctx */ }
 		return;
 	}
+	startSpeaking(state, cmd);
+}
+
+function startSpeaking(state: State, cmd: { argv: string[]; stdin?: string }): void {
 	state.narrating = true;
 	renderStatus(state);
+	const token = ++state.speakSeq;
 	state.speaker.start(cmd, () => {
+		if (token !== state.speakSeq) return; // llegó una narración más nueva
 		state.narrating = false;
 		renderStatus(state);
 	});
 }
 
-/** Llamada al modelo narrador vía modelRegistry.streamSimple. */
-async function modelCall(state: State, request: string, actions: string[], answer: string): Promise<string> {
-	const ctx = state.ctx!;
+/** Llamada al modelo narrador vía modelRegistry.streamSimple; recibe el prompt ya montado. */
+async function modelCall(state: State, prompt: string): Promise<string> {
+	const ctx = state.ctx;
+	if (!ctx) throw new Error("ctx stale");
 	const [provider, ...rest] = state.config.model.split("/");
 	const modelId = rest.join("/");
 	const model = provider && modelId
-		? ctx.modelRegistry.getModel("chat" as never, provider, modelId)
+		? (ctx.modelRegistry.find(provider, modelId) ?? ctx.modelRegistry.getModelOfType("chat", provider, modelId))
 		: undefined;
 	if (!model) throw new Error(`modelo narrador no encontrado: ${state.config.model}`);
 	const stream = ctx.modelRegistry.streamSimple(model, {
 		systemPrompt: narratorPrompt(state.config.language),
-		messages: [{ role: "user", content: brief(request, actions, answer) }],
+		messages: [{ role: "user", content: prompt }],
 	}, { signal: AbortSignal.timeout(MODEL_TIMEOUT_MS), maxTokens: MAX_TOKENS });
 	let text = "";
 	for await (const event of stream) {
@@ -159,6 +178,7 @@ export default function narrator(pi: ExtensionAPI): void {
 		voices: [],
 		narrating: false,
 		warnedNoVoice: false,
+		speakSeq: 0,
 	};
 
 	pi.on("session_start", (event) => {
@@ -175,10 +195,8 @@ export default function narrator(pi: ExtensionAPI): void {
 	pi.on("before_agent_start", (event) => {
 		state.speaker.stop();
 		state.narrating = false;
-		if (event.messageType === "user" && event.prompt) {
-			state.request = event.prompt;
-			state.actions = [];
-		}
+		state.request = event.messageType === "user" ? (event.prompt ?? "") : "";
+		state.actions = [];
 	});
 
 	pi.on("tool_result", (event) => {
@@ -201,7 +219,7 @@ export default function narrator(pi: ExtensionAPI): void {
 					state.request,
 					state.actions,
 					answer,
-					() => modelCall(state, state.request, state.actions, answer),
+					(prompt) => modelCall(state, prompt),
 				);
 				speak(state, text, code || state.config.language);
 			} catch {
@@ -224,7 +242,7 @@ export default function narrator(pi: ExtensionAPI): void {
 			}
 			if (sub === "test") {
 				const voice = value || state.config.voice;
-				speak(state, PREVIEW, voice ? "" : "es");
+				speak(state, PREVIEW, "es", voice || undefined);
 				return Promise.resolve({ message: `Narrator: reproduciendo preview${voice ? ` con ${voice}` : ""}.` });
 			}
 			const { config, reply } = applyCommand(state.config, sub, value);
