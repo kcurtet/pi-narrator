@@ -167,3 +167,26 @@ export class Speaker {
 		}
 	}
 }
+
+/** Cuántos tickets esperan antes que el mío en la cola global (orden lexicográfico = orden temporal). */
+export function waitingAhead(myTicket: string, listDir: (d: string) => string[] = () => []): number {
+	const tickets = listDir("/tmp/pi-narrator.tickets").sort();
+	if (!tickets.includes(myTicket)) return 0;
+	return tickets.indexOf(myTicket);
+}
+
+import { mkdirSync, writeFileSync, unlinkSync } from "node:fs";
+/** Crea un ticket de cola y devuelve su id. */
+export function takeTicket(pid = process.pid): string {
+	const dir = "/tmp/pi-narrator.tickets";
+	try { mkdirSync(dir, { recursive: true }); } catch { /* ya existe */ }
+	const id = `${Date.now().toString().padStart(13, "0")}-${pid}`;
+	try { writeFileSync(join(dir, id), ""); } catch { /* best effort */ }
+	return id;
+}
+
+/** Elimina un ticket de cola. */
+export function dropTicket(id: string): void {
+	if (!id) return;
+	try { unlinkSync(join("/tmp/pi-narrator.tickets", id)); } catch { /* best effort */ }
+}

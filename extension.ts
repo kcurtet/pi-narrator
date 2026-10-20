@@ -102,6 +102,24 @@ export function applyCommand(
 			if (!value.trim()) return { config: next, reply: `Narrator: modelo actual ${next.model}.` };
 			next.model = value.trim();
 			return { config: next, reply: `Narrator: modelo ${next.model}.` };
+		case "speed": {
+			const n = Number(value.trim());
+			if (value.trim() === "") return { config: next, reply: `Narrator: velocidad actual ${next.speed}×.` };
+			if (n >= 0.5 && n <= 3) {
+				next.speed = n;
+				return { config: next, reply: `Narrator: velocidad ${n}×.` };
+			}
+			return { config: next, reply: "Narrator: velocidad entre 0.5 y 3." };
+		}
+		case "short": {
+			const n = Number(value.trim());
+			if (value.trim() === "") return { config: next, reply: `Narrator: umbral actual ${next.shortAnswer} caracteres.` };
+			if (Number.isInteger(n) && n >= 0 && n <= 2000) {
+				next.shortAnswer = n;
+				return { config: next, reply: `Narrator: respuestas llanas ≤ ${n} caracteres se leen sin modelo.` };
+			}
+			return { config: next, reply: "Narrator: umbral entre 0 y 2000." };
+		}
 		case "voice":
 			if (!value.trim()) return { config: next, reply: `Narrator: voz actual ${next.voice || "(auto)"}.` };
 			next.voice = value.trim();

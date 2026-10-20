@@ -85,12 +85,15 @@ test("narratorPrompt pide primera persona, 30 palabras y código ISO", () => {
 	assert.ok(pEs.includes("es"));
 });
 
-test("isShortAnswer: texto plano <=200 y no vacío", () => {
+test("isShortAnswer: texto plano <= umbral (default 200) y no vacío", () => {
 	assert.equal(isShortAnswer("respuesta corta"), true);
 	assert.equal(isShortAnswer(""), false);
 	assert.equal(isShortAnswer(`${"a".repeat(201)}`), false);
 	// markdown que se reduce por debajo del límite
 	assert.equal(isShortAnswer(`# T\n\n${"a".repeat(150)}`), true);
+	// umbral configurable
+	assert.equal(isShortAnswer(`${"a".repeat(300)}`, 400), true);
+	assert.equal(isShortAnswer(`${"a".repeat(300)}`, 200), false);
 });
 
 test("applyPronunciation sustituye palabras completas case-insensitive", () => {
@@ -113,6 +116,8 @@ test("DEFAULT_CONFIG apagado con modelo de ejemplo", () => {
 		model: "zai-coding-cn/gpt-6.1-luna",
 		language: "",
 		voice: "",
+		speed: 1.3,
+		shortAnswer: 200,
 		pronounce: {},
 		patterns: { "#(\\d+)": "issue $1" },
 	});

@@ -106,5 +106,10 @@ test("applyCommand: on/off/stop/lang/model/voice", () => {
 	assert.equal(applyCommand(cfg({ language: "es" }), "lang", "").config.language, "");
 	assert.equal(applyCommand(DEFAULT_CONFIG, "model", "p/m").config.model, "p/m");
 	assert.equal(applyCommand(DEFAULT_CONFIG, "voice", "mi-voz").config.voice, "mi-voz");
+	assert.equal(applyCommand(DEFAULT_CONFIG, "speed", "1.5").config.speed, 1.5);
+	assert.equal(applyCommand(DEFAULT_CONFIG, "speed", "9").config.speed, 1.3, "fuera de rango se ignora");
+	assert.ok(applyCommand(DEFAULT_CONFIG, "speed").reply.includes("1.3"));
+	assert.equal(applyCommand(DEFAULT_CONFIG, "short", "400").config.shortAnswer, 400);
+	assert.equal(applyCommand(DEFAULT_CONFIG, "short", "-5").config.shortAnswer, 200, "inválido se ignora");
 	assert.ok(applyCommand(DEFAULT_CONFIG, "nonsense").reply.includes("Usage"));
 });

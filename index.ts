@@ -14,13 +14,12 @@ import {
 	shouldNarrate,
 } from "./extension.ts";
 import { applyPatterns, applyPronunciation, DEFAULT_CONFIG, narratorPrompt, describeTool, type NarratorConfig } from "./lib.ts";
-import { commandExists, detectEngines, piperVoices, pickVoice, speakCommand, Speaker, type VoiceEngine } from "./voice.ts";
+import { commandExists, detectEngines, dropTicket, piperVoices, pickVoice, speakCommand, Speaker, takeTicket, waitingAhead, type VoiceEngine } from "./voice.ts";
 
 const STATUS_KEY = "narrator";
 const MAX_ACTIONS = 40;
 const MAX_TOKENS = 150;
 const MODEL_TIMEOUT_MS = 30_000;
-const SPEED = 1.3;
 const PREVIEW = "Hola. Esta es la voz del narrador de pi.";
 
 interface State {
@@ -105,13 +104,13 @@ function speak(state: State, rawText: string, lang: string, voiceOverride?: stri
 	const wanted = voiceOverride || state.config.voice;
 	const picked = state.engine === "piper" ? (pickVoice(state.voices, lang, wanted) ?? state.voices[0]?.file) : undefined;
 	const model = picked ? state.voices.find((v) => v.file === picked) : undefined;
-	const cmd = speakCommand(state.engine, text, lang, wanted, model, SPEED);
+	const cmd = speakCommand(state.engine, text, lang, wanted, model, state.config.speed);
 	if (!cmd) {
 		// piper sin voces instaladas: degrada al siguiente engine disponible
 		if (state.engine === "piper" && state.voices.length === 0) {
 			const fallback = detectEngines((c) => c !== "piper-tts" && c !== "piper" && commandExists(c));
 			if (fallback) {
-				const fcmd = speakCommand(fallback, text, lang, "", undefined, SPEED);
+				const fcmd = speakCommand(fallback, text, lang, "", undefined, state.config.speed);
 			if (fcmd) { startSpeaking(state, fcmd); return; }
 			}
 		}
@@ -129,13 +128,25 @@ function speak(state: State, rawText: string, lang: string, voiceOverride?: stri
 
 function startSpeaking(state: State, cmd: { argv: string[]; stdin?: string }): void {
 	state.narrating = true;
-	renderStatus(state);
 	const token = ++state.speakSeq;
+	const ticket = takeTicket();
+	// cuántas sesiones esperan su turno delante (solo si el lock está tomado)
+	const ahead = waitingAhead(ticket);
+	if (ahead > 0) setStatusSafe(state, `narrating · +${ahead}`);
+	else renderStatus(state);
 	state.speaker.start(cmd, () => {
+		dropTicket(ticket);
 		if (token !== state.speakSeq) return; // llegó una narración más nueva
 		state.narrating = false;
 		renderStatus(state);
 	});
+}
+
+/** setStatus tolerante a ctx stale. */
+function setStatusSafe(state: State, line: string): void {
+	try {
+		if (state.ctx) state.ctx.ui.setStatus(STATUS_KEY, line);
+	} catch { /* stale */ }
 }
 
 /** Llamada al modelo narrador vía modelRegistry.streamSimple; recibe el prompt ya montado. */
@@ -151,7 +162,7 @@ async function modelCall(state: State, prompt: string): Promise<string> {
 	const stream = ctx.modelRegistry.streamSimple(model, {
 		systemPrompt: narratorPrompt(state.config.language),
 		messages: [{ role: "user", content: prompt }],
-	}, { signal: AbortSignal.timeout(MODEL_TIMEOUT_MS), maxTokens: MAX_TOKENS });
+	}, { signal: AbortSignal.timeout(MODEL_TIMEOUT_MS), maxTokens: MAX_TOKENS, reasoning: "low" });
 	let text = "";
 	for await (const event of stream) {
 		if (event.type === "error") { debugSpeak("model", `stream error ${JSON.stringify(event.error).slice(0, 200)}`); throw new Error("stream error"); }

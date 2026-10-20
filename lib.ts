@@ -8,6 +8,10 @@ export interface NarratorConfig {
 	model: string;
 	language: string;
 	voice: string;
+	/** Velocidad de la voz (0.5-3, 1 = natural). */
+	speed: number;
+	/** Respuestas más cortas que esto (texto llano) se leen sin modelo. */
+	shortAnswer: number;
 	/** Diccionario de pronunciación: palabra inglesa/extranjera → cómo se dice. */
 	pronounce: Record<string, string>;
 	/** Sustituciones por regex (aplicadas antes que pronounce): "#(\\d+)" → "issue $1". */
@@ -19,6 +23,8 @@ export const DEFAULT_CONFIG: NarratorConfig = {
 	model: "zai-coding-cn/gpt-6.1-luna",
 	language: "",
 	voice: "",
+	speed: 1.3,
+	shortAnswer: 200,
 	pronounce: {},
 	patterns: { "#(\\d+)": "issue $1" },
 };
@@ -95,9 +101,9 @@ export function brief(request: string, actions: string[], answer: string): strin
 }
 
 /** Respuesta tan corta que se lee tal cual, sin llamar al modelo. */
-export function isShortAnswer(answer: string): boolean {
+export function isShortAnswer(answer: string, max = 200): boolean {
 	const text = plain(answer);
-	return text !== "" && text.length <= 200;
+	return text !== "" && text.length <= max;
 }
 
 /** Si una respuesta ya es texto llano hablable (sin tablas, listas, código ni headers). */

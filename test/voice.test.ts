@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { commandExists, detectEngines, piperVoices, pickVoice, speakCommand, Speaker } from "../voice.ts";
+import { commandExists, detectEngines, piperVoices, pickVoice, speakCommand, Speaker, waitingAhead } from "../voice.ts";
 
 test("detectEngines prefiere piper-tts > piper > spd-say > espeak-ng > espeak > null", () => {
 	assert.equal(detectEngines((c) => c === "piper-tts"), "piper");
@@ -85,4 +85,12 @@ test("Speaker stop sin start y doble stop son no-ops", () => {
 test("commandExists encuentra un binario del PATH (sh)", () => {
 	assert.equal(commandExists("sh"), true);
 	assert.equal(commandExists("no-existe-xyz-123"), false);
+});
+
+test("waitingAhead: cuenta tickets anteriores al mío", () => {
+	const tickets = ["100-a", "200-b", "300-yo", "400-c"];
+	const list = () => tickets;
+	assert.equal(waitingAhead("300-yo", list), 2);
+	assert.equal(waitingAhead("100-a", list), 0);
+	assert.equal(waitingAhead("no-existe", list), 0, "sin ticket propio no espera nadie");
 });
