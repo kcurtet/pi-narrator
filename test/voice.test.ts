@@ -38,23 +38,24 @@ test("pickVoice: preferida (ruta o basename) > idioma > undefined", () => {
 	assert.equal(pickVoice(voices, "fr", ""), undefined);
 });
 
-test("speakCommand piper: piper-tts --output-raw piped a pw-play con rate", () => {
+test("speakCommand piper: piper-tts --output-raw piped a pw-play con rate, en cola global flock", () => {
 	const cmd = speakCommand("piper", "hola", "es", "voz", { file: "/v/es.onnx", rate: 22050 }, 1.3);
 	assert.ok(cmd);
-	assert.equal(cmd!.argv[0], "sh");
-	assert.ok(cmd!.argv[2]!.includes("piper-tts"));
-	assert.ok(cmd!.argv[2]!.includes("--output-raw"));
-	assert.ok(cmd!.argv[2]!.includes("--rate 22050"));
-	assert.ok(cmd!.argv[2]!.includes("pw-play"));
-	assert.ok(cmd!.argv[2]!.includes("paplay"), "fallback paplay presente");
+	assert.deepEqual(cmd!.argv.slice(0, 4), ["flock", "-w", "30", "/tmp/pi-narrator.line"]);
+	assert.equal(cmd!.argv[4], "sh");
+	assert.ok(cmd!.argv[6]!.includes("piper-tts"));
+	assert.ok(cmd!.argv[6]!.includes("--output-raw"));
+	assert.ok(cmd!.argv[6]!.includes("--rate 22050"));
+	assert.ok(cmd!.argv[6]!.includes("pw-play"));
+	assert.ok(cmd!.argv[6]!.includes("paplay"), "fallback paplay presente");
 	assert.equal(cmd!.stdin, "hola");
 });
 
 test("speakCommand spd-say y espeak-ng", () => {
 	const spd = speakCommand("spd-say", "hola", "es", "", undefined, 1.3);
-	assert.deepEqual(spd!.argv, ["spd-say", "-w", "-l", "es", "-r", "30", "--", "hola"]);
+	assert.deepEqual(spd!.argv, ["flock", "-w", "30", "/tmp/pi-narrator.line", "spd-say", "-w", "-l", "es", "-r", "30", "--", "hola"]);
 	const esp = speakCommand("espeak-ng", "hi", "en", "", undefined, 1);
-	assert.deepEqual(esp!.argv, ["espeak-ng", "-v", "en", "--", "hi"]);
+	assert.deepEqual(esp!.argv, ["flock", "-w", "30", "/tmp/pi-narrator.line", "espeak-ng", "-v", "en", "--", "hi"]);
 });
 
 test("speakCommand null engine devuelve null", () => {
