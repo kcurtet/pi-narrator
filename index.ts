@@ -141,7 +141,7 @@ function startSpeaking(state: State, cmd: { argv: string[]; stdin?: string }): v
 /** Llamada al modelo narrador vía modelRegistry.streamSimple; recibe el prompt ya montado. */
 async function modelCall(state: State, prompt: string): Promise<string> {
 	const ctx = state.ctx;
-	if (!ctx) { appendFileSync("/tmp/narrator-speak.log", `${Date.now()} model: ctx stale\n`); throw new Error("ctx stale"); }
+	if (!ctx) { debugSpeak("model", "ctx stale"); throw new Error("ctx stale"); }
 	const [provider, ...rest] = state.config.model.split("/");
 	const modelId = rest.join("/");
 	const model = provider && modelId
@@ -154,7 +154,7 @@ async function modelCall(state: State, prompt: string): Promise<string> {
 	}, { signal: AbortSignal.timeout(MODEL_TIMEOUT_MS), maxTokens: MAX_TOKENS });
 	let text = "";
 	for await (const event of stream) {
-		if (event.type === "error") { appendFileSync("/tmp/narrator-speak.log", `${Date.now()} model: stream error ${JSON.stringify(event.error).slice(0, 200)}\n`); throw new Error("stream error"); }
+		if (event.type === "error") { debugSpeak("model", `stream error ${JSON.stringify(event.error).slice(0, 200)}`); throw new Error("stream error"); }
 		if (event.type === "done" || event.type === "update") {
 			const message = (event as { message?: { content?: { type: string; text?: string }[] } }).message;
 			if (message?.content) {
@@ -165,7 +165,7 @@ async function modelCall(state: State, prompt: string): Promise<string> {
 			}
 		}
 	}
-	appendFileSync("/tmp/narrator-speak.log", `${Date.now()} model: ok (${text.length} chars) "${text.slice(0, 80)}"\n`);
+	debugSpeak("model", `ok (${text.length} chars) "${text.slice(0, 80)}"`);
 	return text;
 }
 
@@ -184,7 +184,6 @@ export default function narrator(pi: ExtensionAPI): void {
 	};
 
 	pi.on("session_start", (_event, ctx) => {
-		appendFileSync("/tmp/narrator-speak.log", `${Date.now()} session_start ctx=${ctx ? "yes" : "NO"}\n`);
 		state.ctx = ctx;
 		discoverVoice(state);
 		renderStatus(state);
@@ -213,7 +212,6 @@ export default function narrator(pi: ExtensionAPI): void {
 	});
 
 	pi.on("agent_end", (event, ctx) => {
-		appendFileSync("/tmp/narrator-speak.log", `${Date.now()} agent_end ctx=${ctx ? "yes" : "NO"} selfCtx=${state.ctx ? "yes" : "NO"}\n`);
 		state.ctx = ctx;
 		if (process.env.PI_NARRATOR_DEBUG) debugSpeak("agent_end", `msgs=${event.messages?.length} answer="${answerOf(event).slice(0, 40)}" decision=${JSON.stringify(shouldNarrate(state.config, answerOf(event)))}`);
 		const decision = shouldNarrate(state.config, answerOf(event));
