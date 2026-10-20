@@ -10,6 +10,8 @@ export interface NarratorConfig {
 	voice: string;
 	/** Diccionario de pronunciación: palabra inglesa/extranjera → cómo se dice. */
 	pronounce: Record<string, string>;
+	/** Sustituciones por regex (aplicadas antes que pronounce): "#(\\d+)" → "issue $1". */
+	patterns: Record<string, string>;
 }
 
 export const DEFAULT_CONFIG: NarratorConfig = {
@@ -18,6 +20,7 @@ export const DEFAULT_CONFIG: NarratorConfig = {
 	language: "",
 	voice: "",
 	pronounce: {},
+	patterns: { "#(\\d+)": "issue $1" },
 };
 
 /** Recorta a `max` caracteres sin cortar palabras si puede evitarlo. */
@@ -146,6 +149,20 @@ export function applyPronunciation(text: string, dict: Record<string, string>): 
 		if (!word || !say) continue;
 		const re = new RegExp(`\\b${escapeRe(word)}\\b`, "gi");
 		out = out.replace(re, say);
+	}
+	return out;
+}
+
+/** Sustituye patrones regex con soporte de grupos ($1, $2…). */
+export function applyPatterns(text: string, patterns: Record<string, string>): string {
+	let out = text;
+	for (const [pattern, replacement] of Object.entries(patterns)) {
+		if (!pattern || !replacement) continue;
+		try {
+			out = out.replace(new RegExp(pattern, "g"), replacement);
+		} catch {
+			// patrón inválido: se ignora
+		}
 	}
 	return out;
 }

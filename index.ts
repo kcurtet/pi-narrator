@@ -13,7 +13,7 @@ import {
 	VOICES_DIR,
 	shouldNarrate,
 } from "./extension.ts";
-import { applyPronunciation, DEFAULT_CONFIG, narratorPrompt, describeTool, type NarratorConfig } from "./lib.ts";
+import { applyPatterns, applyPronunciation, DEFAULT_CONFIG, narratorPrompt, describeTool, type NarratorConfig } from "./lib.ts";
 import { commandExists, detectEngines, piperVoices, pickVoice, speakCommand, Speaker, type VoiceEngine } from "./voice.ts";
 
 const STATUS_KEY = "narrator";
@@ -100,7 +100,7 @@ function debugSpeak(tag: string, info: string): void {
 
 function speak(state: State, rawText: string, lang: string, voiceOverride?: string): void {
 	if (!rawText) return;
-	const text = applyPronunciation(rawText, state.config.pronounce);
+	const text = applyPatterns(applyPronunciation(rawText, state.config.pronounce), state.config.patterns);
 	debugSpeak("speak", `engine=${state.engine ?? "none"} lang=${lang || "-"} ${text.slice(0, 60)}`);
 	const wanted = voiceOverride || state.config.voice;
 	const picked = state.engine === "piper" ? (pickVoice(state.voices, lang, wanted) ?? state.voices[0]?.file) : undefined;
