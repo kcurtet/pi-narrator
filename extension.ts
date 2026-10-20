@@ -8,6 +8,7 @@ import {
 	brief,
 	cut,
 	guessLanguage,
+	isPlainAnswer,
 	isShortAnswer,
 	parseNarration,
 	plain,
@@ -25,7 +26,7 @@ export type NarrateDecision = { direct: boolean } | false;
 export function shouldNarrate(config: NarratorConfig, answer: string): NarrateDecision {
 	if (!config.enabled) return false;
 	if (plain(answer) === "") return false;
-	if (isShortAnswer(answer)) {
+	if (isShortAnswer(answer) && isPlainAnswer(answer)) {
 		if (!config.language) return { direct: true };
 		if (guessLanguage(answer) === config.language) return { direct: true };
 	}

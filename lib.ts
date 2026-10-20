@@ -94,6 +94,18 @@ export function isShortAnswer(answer: string): boolean {
 	return text !== "" && text.length <= 200;
 }
 
+/** Si una respuesta ya es texto llano hablable (sin tablas, listas, código ni headers). */
+export function isPlainAnswer(answer: string): boolean {
+	if (/```/.test(answer)) return false;
+	if (/^\s*\|.*\|\s*$/m.test(answer)) return false; // filas de tabla
+	if (/^\s*\|[-: |]+\|\s*$/m.test(answer)) return false;
+	if (/^#{1,6}\s/m.test(answer)) return false; // headers
+	const bullets = answer.match(/^\s*[-*+]\s+\S/gm) ?? [];
+	if (bullets.length >= 2) return false; // lista real (no un guion suelto)
+	if (/`[^`]+`/.test(answer)) return false; // código inline
+	return true;
+}
+
 function languageName(code: string): string {
 	try {
 		return new Intl.DisplayNames(["en"], { type: "language", fallback: "none" }).of(code) ?? code;
