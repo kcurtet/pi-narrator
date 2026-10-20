@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { shouldNarrate, narrationText, applyCommand, VOICES_DIR } from "../extension.ts";
+import { shouldNarrate, narrationText, applyCommand, narratorCompletions, VOICES_DIR } from "../extension.ts";
 import { DEFAULT_CONFIG, type NarratorConfig } from "../lib.ts";
 
 const cfg = (over: Partial<NarratorConfig>): NarratorConfig => ({ ...DEFAULT_CONFIG, ...over });
@@ -112,4 +112,19 @@ test("applyCommand: on/off/stop/lang/model/voice", () => {
 	assert.equal(applyCommand(DEFAULT_CONFIG, "short", "400").config.shortAnswer, 400);
 	assert.equal(applyCommand(DEFAULT_CONFIG, "short", "-5").config.shortAnswer, 200, "inválido se ignora");
 	assert.ok(applyCommand(DEFAULT_CONFIG, "nonsense").reply.includes("Usage"));
+});
+
+test("narratorCompletions: subcomandos por prefijo", () => {
+	const items = narratorCompletions("vo", DEFAULT_CONFIG, []);
+	assert.ok(items.some((i) => i.value === "voices"));
+	assert.equal(narratorCompletions("", DEFAULT_CONFIG, []).length, 10);
+	assert.equal(narratorCompletions("zzz", DEFAULT_CONFIG, []).length, 0);
+});
+
+test("narratorCompletions: voces y langs por argumento", () => {
+	const voices = narratorCompletions("test es", DEFAULT_CONFIG, ["/v/es_ES-a.onnx", "/v/en_US-b.onnx"]);
+	assert.deepEqual(voices.map((v) => v.value), ["es_ES-a"]);
+	const langs = narratorCompletions("lang e", DEFAULT_CONFIG, []);
+	assert.deepEqual(langs.map((v) => v.value), ["es", "en", "eu"]);
+	assert.equal(narratorCompletions("on x", DEFAULT_CONFIG, []).length, 0);
 });
