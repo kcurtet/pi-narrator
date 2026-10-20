@@ -7,6 +7,7 @@ import {
 	describeTool,
 	guessLanguage,
 	isShortAnswer,
+	applyPatterns,
 	applyPronunciation,
 	narratorPrompt,
 	parseNarration,
@@ -100,6 +101,12 @@ test("applyPronunciation sustituye palabras completas case-insensitive", () => {
 	assert.equal(applyPronunciation("texto", {}), "texto");
 });
 
+test("applyPatterns sustituye con regex y grupos ($1)", () => {
+	const patterns = { "#(\\d+)": "issue $1" };
+	assert.equal(applyPatterns("cerré el #13 y el #7 va bien", patterns), "cerré el issue 13 y el issue 7 va bien");
+	assert.equal(applyPatterns("sin nada", patterns), "sin nada");
+});
+
 test("DEFAULT_CONFIG apagado con modelo de ejemplo", () => {
 	assert.deepEqual(DEFAULT_CONFIG, {
 		enabled: false,
@@ -107,5 +114,6 @@ test("DEFAULT_CONFIG apagado con modelo de ejemplo", () => {
 		language: "",
 		voice: "",
 		pronounce: {},
+		patterns: { "#(\\d+)": "issue $1" },
 	});
 });
