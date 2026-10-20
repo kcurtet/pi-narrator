@@ -22,6 +22,19 @@ test("shouldNarrate larga: vía modelo", () => {
 	assert.deepEqual(r, { direct: false });
 });
 
+test("shouldNarrate corta con tabla/lista/código: vía modelo, no lectura directa", () => {
+	const tabla = "| a | b |\n|---|---|\n| 1 | 2 |";
+	assert.deepEqual(shouldNarrate(cfg({ enabled: true }), tabla), { direct: false });
+	const lista = "- uno\n- dos\n- tres";
+	assert.deepEqual(shouldNarrate(cfg({ enabled: true }), lista), { direct: false });
+	const codigo = "prueba corta `con código`";
+	assert.deepEqual(shouldNarrate(cfg({ enabled: true }), codigo), { direct: false });
+});
+
+test("shouldNarrate corta y llana: directa", () => {
+	assert.deepEqual(shouldNarrate(cfg({ enabled: true }), "He arreglado el bug y pasan los tests."), { direct: true });
+});
+
 test("narrationText directa lee el plain", async () => {
 	const r = await narrationText(cfg({ enabled: true }), "req", [], "# Título\n\nTexto.", () => {
 		throw new Error("no debería llamar al modelo");
