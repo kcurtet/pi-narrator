@@ -97,11 +97,14 @@ export function speakCommand(
 	if (engine === "piper") {
 		if (!piperModel) return null;
 		// El texto entra por stdin (sin quoting); el pipeline entero muere con el grupo.
-	const play = `pw-play --raw --rate ${piperModel.rate} --format s16 --channels 1 - || paplay --raw --rate ${piperModel.rate} --format s16 --channels 1 -`;
+		// length_scale es el control de velocidad de piper (1/speed); sentence-silence
+		// añade pausa entre frases (claridad). Los noise scales quedan a los del .onnx.json.
+		const lengthScale = (1 / speed).toFixed(3);
+		const play = `pw-play --raw --rate ${piperModel.rate} --format s16 --channels 1 - || paplay --raw --rate ${piperModel.rate} --format s16 --channels 1 -`;
 		const argv = [
 			"sh",
 			"-c",
-			`piper-tts -m '${piperModel.file.replace(/'/g, "'\\''")}' --output-raw | (${play})`,
+			`piper-tts -m '${piperModel.file.replace(/'/g, "'\\''")}' --length_scale ${lengthScale} --sentence-silence 0.2 --output-raw | (${play})`,
 		];
 		return { argv: [...LINE, ...argv], stdin: text };
 	}

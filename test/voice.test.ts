@@ -44,6 +44,8 @@ test("speakCommand piper: piper-tts --output-raw piped a pw-play con rate, en co
 	assert.deepEqual(cmd!.argv.slice(0, 4), ["flock", "-w", "30", "/tmp/pi-narrator.line"]);
 	assert.equal(cmd!.argv[4], "sh");
 	assert.ok(cmd!.argv[6]!.includes("piper-tts"));
+	assert.ok(cmd!.argv[6]!.includes("--length_scale"), "speed aplicada vía length_scale");
+	assert.ok(cmd!.argv[6]!.includes("--sentence-silence"), "pausa entre frases");
 	assert.ok(cmd!.argv[6]!.includes("--output-raw"));
 	assert.ok(cmd!.argv[6]!.includes("--rate 22050"));
 	assert.ok(cmd!.argv[6]!.includes("pw-play"));
