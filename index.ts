@@ -275,5 +275,3 @@ function answerOf(event: { messages?: { role?: string; content?: unknown }[] }):
 	return "";
 }
 
-// exportaciones para tests de humo del import
-export { cut };
