@@ -3,7 +3,23 @@
   "version": "0.1.0",
   "type": "module",
   "description": "pi extension: narrates out loud what the agent did after each turn (piper/spd-say/espeak)",
+  "keywords": [
+    "pi-package",
+    "pi-extension",
+    "tts",
+    "narrator"
+  ],
+  "license": "MIT",
+  "repository": "github:kcurtet/pi-narrator",
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  },
   "scripts": {
     "test": "node --test 'test/*.test.ts'"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
   }
 }
