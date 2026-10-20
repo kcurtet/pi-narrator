@@ -78,6 +78,7 @@ test("narratorPrompt pide primera persona, 30 palabras y código ISO", () => {
 	assert.ok(p.includes("30 words"));
 	assert.ok(p.toLowerCase().includes("iso 639-1"));
 	assert.ok(p.includes("first person"));
+	assert.ok(p.includes("No English words"), "norma anti-anglicismos presente");
 	const pEs = narratorPrompt("es");
 	assert.ok(pEs.includes("es"));
 });

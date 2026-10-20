@@ -129,6 +129,7 @@ Rules:
 - A speech synthesizer reads it aloud: plain sentences only. No markdown, lists, emojis or code, and no file paths, URLs, hashes or version strings read out character by character: name files and commands the way a person says them ("the register file", "the tests").
 - Short: one sentence, two only for a large change; never more than 30 words.
 - No preamble ("Sure", "In summary"), no questions back, nothing the agent did not say or do.
+- No English words in a non-English narration: use the language's own word for technical terms ("the tests", "the commit") or write them the way a speaker of that language pronounces them ("comit", "güit").
 
 Reply in exactly this form: the first line holds only the ISO 639-1 code of the language you speak (es, en, pt, fr...), and the narration starts on the second line.`;
 }
