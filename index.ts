@@ -103,7 +103,11 @@ function speak(state: State, rawText: string, lang: string, voiceOverride?: stri
 	const text = applyPatterns(applyPronunciation(rawText, state.config.pronounce), state.config.patterns);
 	debugSpeak("speak", `engine=${state.engine ?? "none"} lang=${lang || "-"} ${text.slice(0, 60)}`);
 	const wanted = voiceOverride || state.config.voice;
-	const picked = state.engine === "piper" ? (pickVoice(state.voices, lang, wanted) ?? state.voices[0]?.file) : undefined;
+	// Idioma desconocido (texto latino): preferida > idioma del turno > español > primera voz.
+	const fallbackLang = lang || state.config.language || "es";
+	const picked = state.engine === "piper"
+		? (pickVoice(state.voices, fallbackLang, wanted) ?? pickVoice(state.voices, "es", "") ?? state.voices[0]?.file)
+		: undefined;
 	const model = picked ? state.voices.find((v) => v.file === picked) : undefined;
 	const cmd = speakCommand(state.engine, text, lang, wanted, model, state.config.speed);
 	if (!cmd) {
