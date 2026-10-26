@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { shouldNarrate, narrationText, applyCommand, narratorCompletions, VOICES_DIR } from "../extension.ts";
-import { DEFAULT_CONFIG, type NarratorConfig } from "../lib.ts";
+import { DEFAULT_CONFIG, DEFAULT_VOICE, type NarratorConfig } from "../lib.ts";
 
 const cfg = (over: Partial<NarratorConfig>): NarratorConfig => ({ ...DEFAULT_CONFIG, ...over });
 
@@ -106,6 +106,10 @@ test("applyCommand: on/off/stop/lang/model/voice", () => {
 	assert.equal(applyCommand(cfg({ language: "es" }), "lang", "").config.language, "");
 	assert.equal(applyCommand(DEFAULT_CONFIG, "model", "p/m").config.model, "p/m");
 	assert.equal(applyCommand(DEFAULT_CONFIG, "voice", "mi-voz").config.voice, "mi-voz");
+	assert.ok(applyCommand(DEFAULT_CONFIG, "install").reply.includes(DEFAULT_VOICE), "install sin args usa la default");
+	assert.ok(applyCommand(DEFAULT_CONFIG, "install", "en_US-ryan-high").reply.includes("en_US-ryan-high"));
+	assert.ok(applyCommand(DEFAULT_CONFIG, "install", "nonsense!!").reply.includes("inválido"), "nombre inválido");
+	assert.deepEqual(applyCommand(DEFAULT_CONFIG, "install", "nonsense!!").config, DEFAULT_CONFIG, "install inválido sin efectos");
 	assert.equal(applyCommand(DEFAULT_CONFIG, "speed", "1.5").config.speed, 1.5);
 	assert.equal(applyCommand(DEFAULT_CONFIG, "speed", "9").config.speed, 1.3, "fuera de rango se ignora");
 	assert.ok(applyCommand(DEFAULT_CONFIG, "speed").reply.includes("1.3"));
@@ -117,7 +121,8 @@ test("applyCommand: on/off/stop/lang/model/voice", () => {
 test("narratorCompletions: subcomandos por prefijo", () => {
 	const items = narratorCompletions("vo", DEFAULT_CONFIG, []);
 	assert.ok(items.some((i) => i.value === "voices"));
-	assert.equal(narratorCompletions("", DEFAULT_CONFIG, []).length, 10);
+	assert.equal(narratorCompletions("", DEFAULT_CONFIG, []).length, 11);
+	assert.ok(narratorCompletions("inst", DEFAULT_CONFIG, []).some((i) => i.value === "install"), "install en completions");
 	assert.equal(narratorCompletions("zzz", DEFAULT_CONFIG, []).length, 0);
 });
 

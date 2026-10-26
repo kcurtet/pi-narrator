@@ -120,5 +120,6 @@ test("DEFAULT_CONFIG apagado con modelo de ejemplo", () => {
 		shortAnswer: 200,
 		pronounce: {},
 		patterns: { "#(\\d+)": "issue $1" },
+		installAsked: false,
 	});
 });

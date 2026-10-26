@@ -32,6 +32,10 @@ curl -LO https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_AR/danie
 curl -LO https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_AR/daniela/high/es_AR-daniela-high.onnx.json
 ```
 
+Sin curl: la extensión ofrece instalar la voz por defecto con un dialog al arrancar
+(una sola vez por máquina) y `/narrator install [voz]` baja cualquier voz del catálogo
+por su nombre (`en_US-ryan-high`, `es_ES-carlfm-x-low`…).
+
 ## Instalación
 
 ```
@@ -50,6 +54,7 @@ O checkout local: `pi --extension /ruta/a/pi-narrator`.
 | `/narrator on` / `off` | explícito |
 | `/narrator stop` | corta la narración en curso |
 | `/narrator voices` | lista voces piper instaladas y el engine detectado |
+| `/narrator install [voz]` | baja una voz piper de rhasspy/piper-voices (default: `es_AR-daniela-high`) |
 | `/narrator test [voz]` | reproduce un preview |
 | `/narrator model <id>` | modelo que escribe la narración (default: `zai-coding-cn/gpt-6.1-luna`; p. ej. `/narrator model zai-coding-cn/glm-5.3-flash`) |
 | `/narrator lang <código>` | fija el idioma hablado (`es`, `en`…); vacío/automático = idioma del usuario |

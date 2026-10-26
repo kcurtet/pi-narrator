@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
+import http from "node:http";
+import { existsSync, mkdtempSync, readdirSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import type { AddressInfo } from "node:net";
 import { test } from "node:test";
-import { commandExists, detectEngines, piperVoices, pickVoice, speakCommand, Speaker, waitingAhead } from "../voice.ts";
+import { commandExists, detectEngines, downloadVoice, piperVoices, pickVoice, speakCommand, Speaker, voiceUrl, waitingAhead } from "../voice.ts";
 
 test("detectEngines prefiere piper-tts > piper > spd-say > espeak-ng > espeak > null", () => {
 	assert.equal(detectEngines((c) => c === "piper-tts"), "piper");
@@ -37,6 +42,41 @@ test("pickVoice: preferida (ruta o basename) > idioma > undefined", () => {
 	assert.equal(pickVoice(voices, "es", "es_ES-a"), "/v/es_ES-a.onnx", "basename sin .onnx (formato de las completions)");
 	assert.equal(pickVoice(voices, "es", "no-existe"), "/v/es_ES-a.onnx");
 	assert.equal(pickVoice(voices, "fr", ""), undefined);
+});
+
+test("voiceUrl: basename piper → URLs deterministas de rhasspy; inválido → undefined", () => {
+	const url = voiceUrl("es_AR-daniela-high");
+	assert.equal(url?.onnx, "https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_AR/daniela/high/es_AR-daniela-high.onnx");
+	assert.equal(url?.json, "https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_AR/daniela/high/es_AR-daniela-high.onnx.json");
+	assert.ok(voiceUrl("es_ES-carlfm-x-low")!.onnx.includes("/es/es_ES/carlfm/x-low/es_ES-carlfm-x-low.onnx"), "quality bi-token x-low");
+	assert.ok(voiceUrl("en_US-ryan-high.onnx")!.onnx.endsWith("/en/en_US/ryan/high/en_US-ryan-high.onnx"), "acepta basename con .onnx");
+	assert.equal(voiceUrl("daniela"), undefined, "sin locale ni quality");
+	assert.equal(voiceUrl("es_AR-daniela-alto"), undefined, "quality desconocida");
+});
+
+test("downloadVoice: baja onnx+json, valida rate, renombra; fallos limpian parciales", async () => {
+	const dir = mkdtempSync(join(tmpdir(), "pi-narrator-voices-"));
+	const server = http.createServer((req, res) => {
+		if (req.url === "/ok/es_X-tesla-high.onnx.json") res.end(JSON.stringify({ audio: { sample_rate: 16000 } }));
+		else if (req.url === "/ok/es_X-tesla-high.onnx") res.end(Buffer.from("modelo"));
+		else if (req.url === "/corrupt/es_X-tesla-high.onnx.json") res.end("{no json");
+		else if (req.url === "/corrupt/es_X-tesla-high.onnx") res.end("modelo");
+		else { res.statusCode = 404; res.end(); }
+	});
+	await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+	const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+	try {
+		const voice = await downloadVoice(`${base}/ok/es_X-tesla-high.onnx`, dir);
+		assert.deepEqual(voice, { file: join(dir, "es_X-tesla-high.onnx"), lang: "es", rate: 16000 });
+		assert.ok(existsSync(voice.file) && existsSync(`${voice.file}.json`), "ficheros finales presentes");
+		assert.ok(!readdirSync(dir).some((f) => f.endsWith(".part")), "sin parciales");
+
+		await assert.rejects(downloadVoice(`${base}/404/es_X-tesla-high.onnx`, dir), undefined, "onnx 404");
+		await assert.rejects(downloadVoice(`${base}/corrupt/es_X-tesla-high.onnx`, dir), undefined, "json corrupto");
+		assert.ok(!readdirSync(dir).some((f) => f !== "es_X-tesla-high.onnx" && f !== "es_X-tesla-high.onnx.json"), "fallos sin huérfanos");
+	} finally {
+		server.close();
+	}
 });
 
 test("speakCommand piper: piper-tts --output-raw piped a pw-play con rate, en cola global flock", () => {

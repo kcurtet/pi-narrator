@@ -5,6 +5,8 @@
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { basename, join } from "node:path";
+import { pipeline } from "node:stream/promises";
+import { Readable } from "node:stream";
 
 export type VoiceEngine = "piper" | "spd-say" | "espeak-ng" | "espeak" | null;
 
@@ -78,6 +80,71 @@ export function pickVoice(voices: PiperVoice[], lang: string, preferred: string)
 		if (byName) return byName.file;
 	}
 	return voices.find((v) => v.lang === lang)?.file;
+}
+
+/** URLs HF (rhasspy/piper-voices) de una voz piper por su basename (es_AR-daniela-high[.onnx]); undefined si no parsea. */
+export function voiceUrl(basename: string): { onnx: string; json: string } | undefined {
+	const base = basename.trim().replace(/\.onnx$/, "");
+	const tokens = base.split("-");
+	if (tokens.length < 3) return undefined;
+	const last = tokens[tokens.length - 1]!;
+	const prev = tokens[tokens.length - 2];
+	let quality: string;
+	if (prev === "x" && (last === "low" || last === "medium") && tokens.length >= 4) {
+		quality = `x-${last}`;
+		tokens.splice(-2);
+	} else if (last === "low" || last === "medium" || last === "high") {
+		quality = last;
+		tokens.pop();
+	} else {
+		return undefined;
+	}
+	const locale = tokens[0]!;
+	if (tokens.length < 2 || !/^[a-z]{2,3}(_[A-Za-z0-9]+)?$/i.test(locale)) return undefined;
+	const name = tokens.slice(1).join("-");
+	const lang = locale.split("_")[0]!.toLowerCase();
+	const path = `${lang}/${locale}/${name}/${quality}/${base}`;
+	const root = "https://huggingface.co/rhasspy/piper-voices/resolve/main";
+	return { onnx: `${root}/${path}.onnx`, json: `${root}/${path}.onnx.json` };
+}
+
+/** Descarga una voz piper (onnx + .onnx.json) a `dir` con renames atómicos; borra parciales al fallar. */
+export async function downloadVoice(onnxUrl: string, dir: string, timeoutMs = 180_000): Promise<PiperVoice> {
+	let pathname: string;
+	try {
+		pathname = decodeURIComponent(new URL(onnxUrl).pathname);
+	} catch {
+		throw new Error(`URL de voz inválida: ${onnxUrl}`);
+	}
+	const base = basename(pathname);
+	const file = join(dir, base);
+	const jsonFile = `${file}.json`;
+	const onnxPart = `${file}.part`;
+	const jsonPart = `${jsonFile}.part`;
+	const clean = () => {
+		for (const f of [onnxPart, jsonPart, jsonFile]) {
+			try { unlinkSync(f); } catch { /* best effort */ }
+		}
+	};
+	try {
+		mkdirSync(dir, { recursive: true });
+		await downloadTo(`${onnxUrl}.json`, jsonPart, timeoutMs);
+		JSON.parse(readFileSync(jsonPart, "utf8")); // valida el json antes de la descarga grande
+		await downloadTo(onnxUrl, onnxPart, timeoutMs);
+		renameSync(jsonPart, jsonFile);
+		renameSync(onnxPart, file);
+		return { file, lang: base.replace(/\.onnx$/, "").split("_")[0]!.toLowerCase(), rate: rateOf(file, (f) => readFileSync(f, "utf8")) };
+	} catch (err) {
+		clean();
+		throw err;
+	}
+}
+
+async function downloadTo(url: string, dest: string, timeoutMs: number): Promise<void> {
+	const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+	if (!res.ok || !res.body) throw new Error(`download ${res.status}: ${url}`);
+	// SAFETY: fetch (undici) devuelve el ReadableStream web estándar que fromWeb espera.
+	await pipeline(Readable.fromWeb(res.body as unknown as import("node:stream/web").ReadableStream<Uint8Array>), createWriteStream(dest));
 }
 
 export interface SpeakCommand {
@@ -181,7 +248,7 @@ export function waitingAhead(myTicket: string, listDir: (d: string) => string[] 
 	return tickets.indexOf(myTicket);
 }
 
-import { mkdirSync, writeFileSync, unlinkSync } from "node:fs";
+import { createWriteStream, mkdirSync, writeFileSync, unlinkSync, renameSync } from "node:fs";
 /** Crea un ticket de cola y devuelve su id. */
 export function takeTicket(pid = process.pid): string {
 	const dir = "/tmp/pi-narrator.tickets";
