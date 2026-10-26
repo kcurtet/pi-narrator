@@ -22,7 +22,7 @@ export const DEFAULT_CONFIG: NarratorConfig = {
 	enabled: false,
 	model: "zai-coding-cn/gpt-6.1-luna",
 	language: "",
-	voice: "",
+	voice: "es_AR-daniela-high",
 	speed: 1.3,
 	shortAnswer: 200,
 	pronounce: {},

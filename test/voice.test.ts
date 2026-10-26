@@ -34,6 +34,7 @@ test("pickVoice: preferida (ruta o basename) > idioma > undefined", () => {
 	];
 	assert.equal(pickVoice(voices, "es", "/v/es_ES-a.onnx"), "/v/es_ES-a.onnx");
 	assert.equal(pickVoice(voices, "en", "en_US-b.onnx"), "/v/en_US-b.onnx");
+	assert.equal(pickVoice(voices, "es", "es_ES-a"), "/v/es_ES-a.onnx", "basename sin .onnx (formato de las completions)");
 	assert.equal(pickVoice(voices, "es", "no-existe"), "/v/es_ES-a.onnx");
 	assert.equal(pickVoice(voices, "fr", ""), undefined);
 });
