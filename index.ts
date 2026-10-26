@@ -14,8 +14,8 @@ import {
 	VOICES_DIR,
 	shouldNarrate,
 } from "./extension.ts";
-import { applyPatterns, applyPronunciation, DEFAULT_CONFIG, narratorPrompt, describeTool, type NarratorConfig } from "./lib.ts";
-import { commandExists, detectEngines, dropTicket, piperVoices, pickVoice, speakCommand, Speaker, takeTicket, waitingAhead, type VoiceEngine } from "./voice.ts";
+import { applyPatterns, applyPronunciation, DEFAULT_CONFIG, DEFAULT_VOICE, narratorPrompt, describeTool, type NarratorConfig } from "./lib.ts";
+import { commandExists, detectEngines, downloadVoice, dropTicket, piperVoices, pickVoice, speakCommand, Speaker, takeTicket, voiceUrl, waitingAhead, type VoiceEngine } from "./voice.ts";
 
 const STATUS_KEY = "narrator";
 const MAX_ACTIONS = 40;
@@ -56,6 +56,41 @@ function saveConfig(config: NarratorConfig): void {
 		writeFileSync(configPath(), JSON.stringify(config, null, "\t"));
 	} catch {
 		// sin persistencia el toggle solo vive esta sesión
+	}
+}
+
+/** Ofrece (una vez) instalar la voz por defecto cuando no hay voces piper. */
+function offerVoiceInstall(state: State): void {
+	const ctx = state.ctx;
+	if (!ctx) return;
+	if (ctx.hasUI) {
+		ctx.ui.confirm("Narrator", `No hay voces piper instaladas. ¿Instalo ${DEFAULT_VOICE} (~114 MB)?`)
+			.then((ok) => { if (ok) void installVoice(state, DEFAULT_VOICE); })
+			.catch(() => { /* dialog cancelado: no pasa nada */ });
+	} else {
+		ctx.ui.notify(`Narrator: sin voces piper; /narrator install baja ${DEFAULT_VOICE}.`, "info");
+	}
+}
+
+/** Baja una voz piper en background y la activa; notifies de inicio/éxito/fallo. */
+async function installVoice(state: State, name: string): Promise<void> {
+	const ctx = state.ctx;
+	const urls = voiceUrl(name);
+	if (!urls) {
+		ctx?.ui.notify(`Narrator: nombre de voz inválido: ${name}.`, "error");
+		return;
+	}
+	if (state.voices.some((v) => path.basename(v.file) === path.basename(urls.onnx))) {
+		ctx?.ui.notify(`Narrator: ${name} ya está instalada.`, "info");
+		return;
+	}
+	ctx?.ui.notify(`Narrator: bajando ${name}…`, "info");
+	try {
+		await downloadVoice(urls.onnx, VOICES_DIR);
+		state.voices = piperVoices(VOICES_DIR);
+		ctx?.ui.notify(`Narrator: voz ${name} lista.`, "info");
+	} catch (err) {
+		ctx?.ui.notify(`Narrator: fallo instalando ${name}: ${err instanceof Error ? err.message : "error"}.`, "error");
 	}
 }
 
@@ -201,6 +236,11 @@ export default function narrator(pi: ExtensionAPI): void {
 		state.ctx = ctx;
 		discoverVoice(state);
 		renderStatus(state);
+		if (state.engine === "piper" && state.voices.length === 0 && !state.config.installAsked) {
+			state.config = { ...state.config, installAsked: true };
+			saveConfig(state.config);
+			offerVoiceInstall(state);
+		}
 	});
 
 	pi.on("session_shutdown", () => {
@@ -272,6 +312,7 @@ export default function narrator(pi: ExtensionAPI): void {
 			state.config = config;
 			saveConfig(config);
 			if (sub === "stop") state.speaker.stop();
+			if (sub === "install") void installVoice(state, value.trim() || DEFAULT_VOICE);
 			renderStatus(state);
 			ctx.ui.notify(reply, "info");
 			return Promise.resolve();

@@ -16,17 +16,23 @@ export interface NarratorConfig {
 	pronounce: Record<string, string>;
 	/** Sustituciones por regex (aplicadas antes que pronounce): "#(\\d+)" → "issue $1". */
 	patterns: Record<string, string>;
+	/** Ya se ofreció instalar la voz por defecto (una vez por máquina). */
+	installAsked: boolean;
 }
+
+/** Voz piper por defecto de la extensión (se ofrece instalarla al arrancar). */
+export const DEFAULT_VOICE = "es_AR-daniela-high";
 
 export const DEFAULT_CONFIG: NarratorConfig = {
 	enabled: false,
 	model: "zai-coding-cn/gpt-6.1-luna",
 	language: "",
-	voice: "es_AR-daniela-high",
+	voice: DEFAULT_VOICE,
 	speed: 1.3,
 	shortAnswer: 200,
 	pronounce: {},
 	patterns: { "#(\\d+)": "issue $1" },
+	installAsked: false,
 };
 
 /** Recorta a `max` caracteres sin cortar palabras si puede evitarlo. */

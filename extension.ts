@@ -7,6 +7,7 @@ import path from "node:path";
 import {
 	brief,
 	cut,
+	DEFAULT_VOICE,
 	guessLanguage,
 	isPlainAnswer,
 	isShortAnswer,
@@ -14,6 +15,7 @@ import {
 	plain,
 	type NarratorConfig,
 } from "./lib.ts";
+import { voiceUrl } from "./voice.ts";
 
 export const VOICES_DIR = path.join(os.homedir(), ".local", "share", "pi-narrator", "voices");
 
@@ -72,6 +74,7 @@ const SUBCOMMANDS: CompletionItem[] = [
 	{ value: "off", label: "off", description: "desactiva el narrador" },
 	{ value: "stop", label: "stop", description: "corta la narración en curso" },
 	{ value: "voices", label: "voices", description: "lista voces piper instaladas" },
+	{ value: "install", label: "install [voz]", description: "baja una voz piper (default: " + DEFAULT_VOICE + ")" },
 	{ value: "test", label: "test [voz]", description: "preview de voz" },
 	{ value: "model", label: "model <id>", description: "modelo que escribe la narración" },
 	{ value: "lang", label: "lang <código>", description: "idioma hablado (vacío = automático)" },
@@ -92,7 +95,7 @@ export function narratorCompletions(prefix: string, config: NarratorConfig, voic
 	const sub = parts[0]!.toLowerCase();
 	const argPrefix = parts.slice(1).join(" ").toLowerCase();
 	const byPrefix = (values: CompletionItem[]) => values.filter((v) => v.value.toLowerCase().startsWith(argPrefix));
-	if (sub === "voices" || sub === "test" || sub === "voice") {
+	if (sub === "voices" || sub === "test" || sub === "voice" || sub === "install") {
 		const items = voiceFiles.map((f) => {
 			const name = f.split("/").pop()!.replace(/\.onnx$/, "");
 			return { value: name, label: name };
@@ -171,6 +174,11 @@ export function applyCommand(
 			if (!value.trim()) return { config: next, reply: `Narrator: voz actual ${next.voice || "(auto)"}.` };
 			next.voice = value.trim();
 			return { config: next, reply: `Narrator: voz ${next.voice}.` };
+		case "install": {
+			const name = value.trim() || DEFAULT_VOICE;
+			if (!voiceUrl(name)) return { config: next, reply: `Narrator: nombre de voz inválido (${name}); formato es_AR-daniela-high.` };
+			return { config: next, reply: `Narrator: instalando ${name}…` };
+		}
 		default:
 			return { config: config, reply: "Usage: /narrator [on | off | stop | voices | test [voz] | model <id> | lang <código> | voice <nombre>]" };
 	}
