@@ -68,10 +68,13 @@ export function commandExists(cmd: string): boolean {
 	return false;
 }
 
-/** Voz piper a usar: la preferida (ruta o basename) si existe, si no la primera del idioma, si no ninguna. */
+/** Voz piper a usar: la preferida (ruta, basename o basename sin .onnx — formato de las completions) si existe, si no la primera del idioma, si no ninguna. */
 export function pickVoice(voices: PiperVoice[], lang: string, preferred: string): string | undefined {
 	if (preferred) {
-		const byName = voices.find((v) => v.file === preferred || basename(v.file) === preferred);
+		const base = (name: string) => basename(name).replace(/\.onnx$/, "");
+		const byName = voices.find(
+			(v) => v.file === preferred || basename(v.file) === preferred || base(v.file) === base(preferred),
+		);
 		if (byName) return byName.file;
 	}
 	return voices.find((v) => v.lang === lang)?.file;

@@ -22,13 +22,14 @@ Instalación (Arch):
 paru -S piper-tts          # o: sudo pacman -S speech-dispatcher espeak-ng
 ```
 
-Voces piper en `~/.local/share/pi-narrator/voices/` (ficheros `.onnx` + `.onnx.json`), p. ej.
-desde [rhasspy/piper-voices](https://huggingface.co/rhasspy/piper-voices):
+Voces piper en `~/.local/share/pi-narrator/voices/` (ficheros `.onnx` + `.onnx.json`), de
+[rhasspy/piper-voices](https://huggingface.co/rhasspy/piper-voices). La preferida
+por defecto es `es_AR-daniela-high` (si está instalada; si no, la primera del idioma hablado):
 
 ```
 mkdir -p ~/.local/share/pi-narrator/voices && cd ~/.local/share/pi-narrator/voices
-curl -LO https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/sharvard/medium/es_ES-sharvard-medium.onnx
-curl -LO https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/sharvard/medium/es_ES-sharvard-medium.onnx.json
+curl -LO https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_AR/daniela/high/es_AR-daniela-high.onnx
+curl -LO https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_AR/daniela/high/es_AR-daniela-high.onnx.json
 ```
 
 ## Instalación
