@@ -180,6 +180,6 @@ export function applyCommand(
 			return { config: next, reply: `Narrator: instalando ${name}…` };
 		}
 		default:
-			return { config: config, reply: "Usage: /narrator [on | off | stop | voices | test [voz] | model <id> | lang <código> | voice <nombre>]" };
+			return { config: config, reply: "Usage: /narrator [on | off | stop | voices | install [voz] | test [voz] | model <id> | lang <código> | voice <nombre>]" };
 	}
 }
