@@ -166,19 +166,17 @@ async function modelCall(state: State, prompt: string): Promise<string> {
 	if (!model) throw new Error(`modelo narrador no encontrado: ${state.config.model}`);
 	const stream = ctx.modelRegistry.streamSimple(model, {
 		systemPrompt: narratorPrompt(state.config.language),
-		messages: [{ role: "user", content: prompt }],
+		messages: [{ role: "user", content: prompt, timestamp: Date.now() }],
 	}, { signal: AbortSignal.timeout(MODEL_TIMEOUT_MS), maxTokens: MAX_TOKENS, reasoning: "low" });
 	let text = "";
 	for await (const event of stream) {
 		if (event.type === "error") { debugSpeak("model", `stream error ${JSON.stringify(event.error).slice(0, 200)}`); throw new Error("stream error"); }
-		if (event.type === "done" || event.type === "update") {
-			const message = (event as { message?: { content?: { type: string; text?: string }[] } }).message;
-			if (message?.content) {
-				text = message.content
-					.filter((c) => c.type === "text")
-					.map((c) => c.text ?? "")
-					.join("");
-			}
+		if (event.type === "done") {
+			const message = event.message;
+			text = message.content
+				.filter((c) => c.type === "text")
+				.map((c) => c.text)
+				.join("");
 		}
 	}
 	debugSpeak("model", `ok (${text.length} chars) "${text.slice(0, 80)}"`);
@@ -251,7 +249,6 @@ export default function narrator(pi: ExtensionAPI): void {
 
 	pi.registerCommand("narrator", {
 		description: "pi te cuenta en voz alta qué hizo tras cada turno",
-		argumentHint: "[on | off | stop | voices | test | model | lang | voice | speed | short]",
 		getArgumentCompletions: (argumentPrefix: string) =>
 			narratorCompletions(argumentPrefix, state.config, state.voices.map((v) => v.file)),
 		handler: (args, ctx) => {
